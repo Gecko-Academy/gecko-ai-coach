@@ -6,6 +6,7 @@ a test suite that mocks the model into agreeing with it proves nothing.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
 
@@ -283,9 +284,14 @@ def test_title_weighting_closed_the_documented_miss_and_how() -> None:
 
 # --- the optional vector retriever -----------------------------------------
 
-chromadb = pytest.importorskip("chromadb", reason="the vector extra is optional")
+# A mark, not a module-level importorskip: that one skips EVERY test in this
+# file when the extra is missing, and CI reported "1 skipped" for the whole suite.
+needs_chroma = pytest.mark.skipif(
+    importlib.util.find_spec("chromadb") is None, reason="the vector extra is optional"
+)
 
 
+@needs_chroma
 def test_the_vector_retriever_drops_into_the_same_seam() -> None:
     """It must be usable anywhere `retrieve` is, with no change to the caller."""
     from gecko_ai_coach.vector import build
@@ -295,6 +301,7 @@ def test_the_vector_retriever_drops_into_the_same_seam() -> None:
     assert result.pages == ("one",)
 
 
+@needs_chroma
 def test_without_a_floor_a_vector_index_can_never_refuse() -> None:
     """The failure a vector store has and a keyword scorer does not.
 
@@ -312,6 +319,7 @@ def test_without_a_floor_a_vector_index_can_never_refuse() -> None:
     assert floored("xylophone quarterly dividend", PAGES, 3) == [], "a floor can refuse"
 
 
+@needs_chroma
 def test_the_vector_retriever_beats_the_keyword_one_on_vocabulary() -> None:
     """The one thing embeddings are bought for, and the baseline's known miss.
 
