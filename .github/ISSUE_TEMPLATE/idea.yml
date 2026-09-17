@@ -1,0 +1,27 @@
+name: An idea, or something broken
+description: A change to the ranking, the metric, the docs, or a bug.
+title: ""
+labels: []
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would change
+    validations:
+      required: true
+  - type: textarea
+    id: measure
+    attributes:
+      label: How would we know it worked?
+      description: |
+        Which labelled set, and what would the number do? "It feels better" is not
+        measurable here — that is the one rule this project has.
+    validations:
+      required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Before you open it
+      options:
+        - label: It needs no new runtime dependency in the default path (extras are fine)
+        - label: It does not require tuning on `data/held-out.jsonl`
