@@ -9,6 +9,7 @@ an issue, and each one makes the coach measurably better for the whole cohort.
 - [Set up once](#set-up-once)
 - [Rung 1 — add a question the coach gets wrong](#rung-1--add-a-question-the-coach-gets-wrong) · 10 min · no code
 - [Rung 2 — explain a miss](#rung-2--explain-a-miss) · 30 min · no code
+- [Translate the README](#translate-the-readme) · 30 min · no code
 - [Rung 3 — change one knob, and measure it](#rung-3--change-one-knob-and-measure-it) · 1–2 h · a few lines of Python
 - [Rung 4 — bigger work](#rung-4--bigger-work) · open an issue first
 - [Open the pull request](#open-the-pull-request)
@@ -33,7 +34,7 @@ uv sync --extra dev
 3. Check that it works. Both commands must finish without an error:
 
 ```bash
-uv run ai-coach ask "how do I hand a session in" --pages ../dev3pack-cohort-2026-09/units/en
+uv run ai-coach ask "where do I submit my work" --pages ../dev3pack-cohort-2026-09/units/en
 uv run pytest
 ```
 
@@ -118,6 +119,52 @@ titled `label: what is in week 1` instead.
 
 A clear explanation is often most of the fix. The next person on rung 3 starts
 from it.
+
+## Translate the README
+
+Many people in the cohort read more easily in Portuguese or Spanish than in
+English. A good translation is a real contribution, and it needs no code.
+
+**There are two drafts:** [`README.pt-BR.md`](README.pt-BR.md) and
+[`README.es.md`](README.es.md). They were machine-drafted and nobody has
+reviewed them yet. The most useful thing you can do is **review one.**
+
+### Review a draft
+
+1. Read the draft next to [`README.md`](README.md).
+2. Fix anything that sounds unnatural, is wrong, or that a beginner would not
+   understand. Short sentences. Plain words.
+3. When a native speaker has read the whole page, remove the draft line at
+   the top (`Rascunho` / `Borrador`) and the `(rascunho)` / `(borrador)` label
+   in the language bar of every README.
+
+Pull request title: `docs(pt-BR): review the README` or `docs(es): review the README`
+
+### Add a new language
+
+1. Copy `README.pt-BR.md` to `README.<code>.md`. Use the language code:
+   `fr`, `de`, `it`, `zh-CN`, `ja`.
+2. Translate the text. Keep the same sections.
+3. Add your language to the language bar at the top of **every** README.
+4. Keep the draft line at the top until a second native speaker reviews it.
+
+Pull request title: `docs(<code>): draft README`
+
+### What never changes in a translation
+
+A test checks the first two. If you translate them, the checks turn red.
+
+- **Commands and code.** Everything inside a code block stays exactly as it is
+  in English. `uv run ai-coach ask "where do I submit my work"` is a command,
+  not a sentence.
+- **Page ids and file names.** `unit0/how-to-submit`, `CONTRIBUTING.md`.
+- **The source commit.** Every translation starts with
+  `<!-- translated from README.md at <commit> -->`. Update it to the commit you
+  translated from, so the next person can see what changed since:
+
+```bash
+git log --oneline <commit>..HEAD -- README.md
+```
 
 ## Rung 3 — change one knob, and measure it
 

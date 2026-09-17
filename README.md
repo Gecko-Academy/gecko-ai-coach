@@ -1,5 +1,7 @@
 # Gecko AI Coach
 
+**English** · [Português (rascunho)](README.pt-BR.md) · [Español (borrador)](README.es.md)
+
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![uv](https://img.shields.io/badge/uv-managed-6e56cf)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -28,7 +30,7 @@ git clone https://github.com/Gecko-Academy/gecko-ai-coach.git
 cd gecko-ai-coach
 uv sync --extra dev
 
-uv run ai-coach ask "how do I hand a session in" --pages ../dev3pack-cohort-2026-09/units/en
+uv run ai-coach ask "where do I submit my work" --pages ../dev3pack-cohort-2026-09/units/en
 ```
 
 No key, no download, no network: the default retriever reads the pages and quotes them.
@@ -120,7 +122,7 @@ Most people arrive believing 6 is the whole job. `measure` is there to disagree 
 
 | Name | Needs | Hit rate @3 | Notes |
 |---|---|---|---|
-| `keyword` | nothing | **47%** | the default: no dependency, no download, instant |
+| `keyword` | nothing | **59%** | the default: no dependency, no download, instant. `--baseline` measures it with the ranking improvements off: 47% |
 | `chroma` | `chromadb` and a model download | **71%** | embeddings, with a similarity floor |
 
 ```bash
@@ -166,8 +168,8 @@ from pathlib import Path
 from gecko_ai_coach import corpus, coach
 
 documents = corpus.load(Path("units/en"))
-result = coach.answer("how do I hand a session in", documents)
-print(result.pages)  # ('unit0/how-to-submit',)
+result = coach.answer("where do I submit my work", documents)
+print(result.pages[0])  # unit0/how-to-submit
 ```
 
 `coach.answer` takes `retriever=` and `client=`, so replacing either is one line rather than a fork.
@@ -180,6 +182,6 @@ print(result.pages)  # ('unit0/how-to-submit',)
 
 ## Contributing
 
-Start with [rung 1 of CONTRIBUTING.md](CONTRIBUTING.md#rung-1--add-a-question-the-coach-gets-wrong): ten minutes, no code. One rule for ranking changes: bring the number — before and after, on a named set, and the regression as well as the gain.
+Start with [rung 1 of CONTRIBUTING.md](CONTRIBUTING.md#rung-1--add-a-question-the-coach-gets-wrong): ten minutes, no code. Or [review a translation](CONTRIBUTING.md#translate-the-readme) of this page. One rule for ranking changes: bring the number — before and after, on a named set, and the regression as well as the gain.
 
 MIT.
