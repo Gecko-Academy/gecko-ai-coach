@@ -89,7 +89,16 @@ def chunk_document(doc: Document, max_chars: int = 800) -> list[Chunk]:
 
 #: The original keyword retriever: every improvement switched off. Pass it to see
 #: the number every change is measured against: `retrieve(q, docs, **BASELINE)`.
-BASELINE: dict[str, bool | float] = {"bm25": False, "title_weight": 0.0, "one_per_page": False}
+BASELINE: dict[str, bool | float] = {
+    "bm25": False,
+    "title_weight": 0.0,
+    "one_per_page": False,
+    "min_coverage": 0.0,
+}
+
+#: How much of the question has to appear on the winning page before the answer
+#: is offered at all. Measured, not chosen: see `retrieve`.
+MIN_COVERAGE = 0.4
 
 
 def retrieve(
@@ -101,6 +110,7 @@ def retrieve(
     bm25: bool = True,
     title_weight: float = 1.0,
     one_per_page: bool = True,
+    min_coverage: float = MIN_COVERAGE,
 ) -> list[ScoredChunk]:
     """Score chunks against a question, and return the best `top_k`.
 
@@ -119,13 +129,34 @@ def retrieve(
                     A page called "Handing work in" is about handing work in.
     `one_per_page`  the top answers come from different pages, so one long page
                     cannot take every slot.
+    `min_coverage`  how much of the question has to appear on the winning page.
+                    Below it nothing is returned, which is how this retriever
+                    refuses a question the pages do not cover.
+
+    WHY COVERAGE, AND NOT THE SCORE. A score is a sum over the words that
+    matched, so it grows with the length of the question: a floor of "4.0"
+    refuses a two-word question and waves a six-word one through. The share of
+    the question that was found does not move with length. "How do I deploy a
+    kubernetes ingress controller" matches `deploy` and nothing else -- one word
+    of four -- and every question this course does answer clears 0.5.
+
+    WHY THE PAGE, AND NOT THE CHUNK. Filtering chunk by chunk throws away the
+    right page when the question's words are spread across it: measured, that
+    cost `do I need to fork anything` its answer. The gate reads the page the
+    best chunk came from, and then returns all of them or none of them --
+    "not in these pages" is about the pages, so it is answered per page.
 
     With all three off this is exactly the original keyword baseline. Measured
     against the public cohort pages, turning all three on moved:
 
-        data/dev3pack.jsonl          47% -> 59%
-        data/course-questions.jsonl  68% -> 76%
-        data/held-out.jsonl          79% -> 83%
+        data/dev3pack.jsonl          47% -> 65%   (59% before the floor)
+        data/course-questions.jsonl  48% -> 76%
+        data/held-out.jsonl          79% -> 88%
+
+    Re-measured on 18 September against 79 pages. The corpus grows every week,
+    and these numbers move with it: `course-questions` read 68% against 74
+    pages and 48% against 79, with the retriever untouched. Measure before and
+    after on the SAME clone, or the difference is about the week, not the code.
 
     The sort key is load-bearing: `(-score, doc_id, position)` makes the same
     question return the same passages on every machine, so a measured
@@ -170,6 +201,15 @@ def retrieve(
             scored.append(ScoredChunk(chunk=chunk, score=round(score, 6)))
 
     scored.sort(key=lambda s: (-s.score, s.chunk.doc_id, s.chunk.position))
+    if min_coverage > 0 and scored:
+        # Read the page the winner came from, not the chunk: see the docstring.
+        # Only the winning page is tokenised, so the floor costs one page's
+        # worth of work rather than the corpus's.
+        pages = {doc.doc_id: doc for doc in documents}
+        best = pages[scored[0].chunk.doc_id]
+        words = set(tokens(best.text)) | set(tokens(best.title))
+        if len(query_tokens & words) / len(query_tokens) < min_coverage:
+            return []
     if one_per_page:
         seen: set[str] = set()
         distinct: list[ScoredChunk] = []

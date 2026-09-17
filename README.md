@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![uv](https://img.shields.io/badge/uv-managed-6e56cf)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Hit rate](https://img.shields.io/badge/hit_rate@3-59%25_keyword_·_71%25_chroma-005efa)
+![Hit rate](https://img.shields.io/badge/hit_rate@3-65%25_keyword_·_71%25_chroma-005efa)
 
 Ask a course a question, get the passage that answers it and a citation you can open. Then **measure the thing that found it, and beat it.**
 
@@ -126,7 +126,7 @@ uv run ai-coach measure --pages ../dev3pack-cohort-2026-09/units/en --cases data
 ```
   74 pages from ../dev3pack-cohort-2026-09/units/en  ·  retriever: keyword
 
-  hit rate @3: 59%  (17 questions)
+  hit rate @3: 65%  (17 questions)
 
   ok   where do I submit my work
   MISS how do I hand in a session
@@ -160,7 +160,7 @@ Most people arrive believing 6 is the whole job. `measure` is there to disagree 
 
 | Name | Needs | Hit rate @3 | Notes |
 |---|---|---|---|
-| `keyword` | nothing | **59%** | the default: no dependency, no download, instant. `--baseline` measures it with the ranking improvements off: 47% |
+| `keyword` | nothing | **65%** | the default: no dependency, no download, instant. `--baseline` measures it with every improvement off: 47% |
 | `chroma` | `chromadb` and a model download | **71%** | embeddings, with a similarity floor |
 
 ```bash
@@ -168,7 +168,7 @@ uv pip install chromadb
 uv run ai-coach measure --pages <pages> --cases data/dev3pack.jsonl --retriever chroma
 ```
 
-**The floor is the interesting part.** A vector index returns its nearest neighbours however far away they are, so with no floor `chroma` scores 59% and answers a question about Kubernetes with course material. Measured on this set:
+**The floor is the interesting part**, and both retrievers now have one. A vector index returns its nearest neighbours however far away they are, so with no floor `chroma` scores 59% and answers a question about Kubernetes with course material. The keyword retriever had the same hole until `min_coverage` closed it — it asks how much of the question appears on the winning page, and returns nothing when too little does. Measured on this set:
 
 | `min_score` | Hit rate | Answerable | Refusals |
 |---|---|---|---|

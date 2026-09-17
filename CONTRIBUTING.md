@@ -253,16 +253,21 @@ commit and push again to the same branch. The pull request updates by itself.
 
 ## The numbers today
 
-Measured on the public cohort pages (74 pages), 17 September 2026, `top_k=3`:
+Measured on the public cohort pages (79 pages), 18 September 2026, `top_k=3`:
 
 | Set | Questions | `--baseline` | Keyword, as shipped | Chroma |
 |---|---|---|---|---|
-| `data/dev3pack.jsonl` | 17 | 47% | **59%** | 71% |
-| `data/course-questions.jsonl` | 25 | 68% | **76%** | not measured |
-| `data/held-out.jsonl` | 24 | 79% | **83%** | not measured |
+| `data/dev3pack.jsonl` | 17 | 47% | **65%** | 71% |
+| `data/course-questions.jsonl` | 25 | 48% | **76%** | not measured |
+| `data/held-out.jsonl` | 24 | 79% | **88%** | not measured |
 
 The held-out set was written before the ranking change, and nobody tuned on it.
 That is why it moved least, and why it is the most honest number in the table.
+
+**The corpus moves too.** These were 74 pages last week and 79 today, and
+`course-questions` read 68% against the smaller one with the retriever
+untouched. Measure before and after **on the same clone** — `git pull` in the
+middle of a comparison and you are reporting the week, not your change.
 
 **Tune on** `dev3pack` and `course-questions`. **Report, but never tune on,**
 `held-out` and `community`.
@@ -290,9 +295,10 @@ Each one is a real `MISS` from the table above.
 5. **Quiz pages are noise.** `what is the fake provider` returns
    `session-02-model-adapter/quiz`. The answers are already stripped from quiz
    pages, so what is left is questions without answers.
-6. **A minimum score, so nothing is returned for nothing.** `how do I deploy a
-   Kubernetes ingress controller` returns two pages. Refusing is the correct
-   answer. Find a floor that refuses it and keeps the real questions.
+6. ~~**A minimum score, so nothing is returned for nothing.**~~ **Done**, and
+   the worked example of this whole guide: `min_coverage` in `retrieve.py` asks
+   how much of the question appears on the winning page. Read that pull request
+   to see what a rung-3 report looks like.
 7. **Word forms.** `can I run a model locally for free` misses
    `unit0/local-model`, because `locally` never matches `local`. A light stemmer
    is the usual fix. Measure it: stemming also joins words that should stay apart.
