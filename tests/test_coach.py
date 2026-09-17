@@ -528,3 +528,55 @@ def test_measure_baseline_reports_the_number_before_the_improvements(tmp_path, c
         == 0
     )
     assert "(baseline)" in capsys.readouterr().out
+
+
+# --- the floor: how it refuses a question the pages do not cover -------------
+
+
+def test_a_question_the_pages_barely_touch_is_refused() -> None:
+    """The defect this closes: one shared word was enough to answer anything.
+
+    "how do I deploy a kubernetes ingress controller" matched `deploy` on a page
+    about deploying a capstone, and the coach answered with it. Three of the
+    question's four words appear nowhere in the course, and a reader cannot see
+    that from a confident passage.
+    """
+    assert retrieve("kubernetes ingress controller rejects", PAGES, 3) == []
+
+
+def test_a_question_the_pages_do_cover_still_answers() -> None:
+    """The floor must not buy the refusal with the answers."""
+    found = retrieve("a parser rejects an unknown field", PAGES, 3)
+
+    assert [hit.chunk.doc_id for hit in found] == ["two"]
+
+
+def test_the_floor_reads_the_page_and_not_the_chunk() -> None:
+    """Measured: reading one chunk cost `do I need to fork anything` its answer.
+
+    The words of a question are spread across a page. Judge the chunk alone and
+    a long page fails its own question; judge the page the winner came from and
+    it answers. The chunk that comes back still carries only its own half.
+    """
+    spread = [
+        Document(
+            "wide",
+            "Handing work in",
+            "Open a pull request.\n\n"
+            + ("filler sentence. " * 80)
+            + "\n\nYou fork the repository first.",
+        )
+    ]
+    found = retrieve("do I fork the repository to open a request", spread, 3, max_chars=200)
+
+    assert found, "the page carries every word of the question, across two chunks"
+
+
+def test_the_baseline_still_answers_everything_it_used_to() -> None:
+    """`BASELINE` means "the original keyword retriever". A floor left on in it
+    would silently redefine every before-number a contributor reports."""
+    assert retrieve("kubernetes ingress controller rejects", PAGES, 3, **BASELINE)
+
+
+def test_the_floor_can_be_turned_off_like_every_other_switch() -> None:
+    assert retrieve("kubernetes ingress controller rejects", PAGES, 3, min_coverage=0.0)
