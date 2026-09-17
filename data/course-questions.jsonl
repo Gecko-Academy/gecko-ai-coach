@@ -1,0 +1,26 @@
+# 25 questions from the course's own coach set (dev). Tuned against: report it, do not trust it alone.
+{"question": "how do I hand my work in", "expected": ["unit0/how-to-submit"]}
+{"question": "where do I submit my notebook", "expected": ["unit0/how-to-submit"]}
+{"question": "do I need to fork anything", "expected": ["unit0/how-to-submit", "unit0/get-settled"]}
+{"question": "what does bootcamp start do", "expected": ["unit0/get-settled"]}
+{"question": "how do I install uv", "expected": ["unit0/get-settled", "unit0/onboarding"]}
+{"question": "bootcamp command not found", "expected": ["unit0/get-settled", "unit0/onboarding"]}
+{"question": "which terminal should I use on windows", "expected": ["unit0/get-settled", "unit0/onboarding"]}
+{"question": "do I need an API key", "expected": ["unit0/runtime-lanes", "unit0/local-model", "unit0/introduction"]}
+{"question": "how much does a key cost", "expected": ["unit0/local-model", "unit0/runtime-lanes"]}
+{"question": "can I run a model locally for free", "expected": ["unit0/local-model"]}
+{"question": "how do I set up ollama", "expected": ["unit0/local-model"]}
+{"question": "how much RAM does the model need", "expected": ["unit0/local-model"]}
+{"question": "what is the fake provider", "expected": ["unit0/runtime-lanes", "unit0/local-model"]}
+{"question": "can I use colab", "expected": ["unit0/runtime-lanes", "unit0/get-settled"]}
+{"question": "which sessions need a coding assistant", "expected": ["unit0/runtime-lanes"]}
+{"question": "how do I give the course to my assistant", "expected": ["unit0/ask-your-assistant"]}
+{"question": "how do I add an MCP server to claude code", "expected": ["unit0/ask-your-assistant"]}
+{"question": "what is in week 1", "expected": ["unit0/week1"]}
+{"question": "what is week 0 for", "expected": ["unit0/week0", "unit0/introduction"]}
+{"question": "when does week 3 start", "expected": ["unit0/week3"]}
+{"question": "what happens on demo day", "expected": ["unit0/week3"]}
+{"question": "how is the course marked", "expected": ["unit0/introduction", "unit0/how-to-submit"]}
+{"question": "what is AGENTS.md for", "expected": ["unit1/session-01-assistant-configuration/concepts-1", "unit0/runtime-lanes"]}
+{"question": "what is a model adapter", "expected": ["unit1/session-02-model-adapter/introduction", "unit1/session-02-model-adapter/concepts-1"]}
+{"question": "what are structured outputs", "expected": ["unit1/session-03-structured-outputs/introduction", "unit1/session-03-structured-outputs/concepts-1"]}

@@ -1,0 +1,45 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --extra dev
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run pytest
+
+  # The number, on every pull request, so a reviewer never has to run it.
+  # It never fails the build: a score you are trying to improve is not a gate.
+  measure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Gecko-Academy/dev3pack-cohort-2026-09
+          path: cohort
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+      - name: Hit rate on every set
+        run: |
+          {
+            echo "## Hit rate @3 on the cohort pages"
+            for cases in data/dev3pack.jsonl data/course-questions.jsonl data/held-out.jsonl data/community; do
+              echo
+              echo "### $cases"
+              echo '```'
+              uv run ai-coach measure --pages cohort/units/en --cases "$cases" || true
+              echo '```'
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"

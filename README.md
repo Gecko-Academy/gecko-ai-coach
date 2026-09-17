@@ -1,9 +1,11 @@
 # Gecko AI Coach
 
+**English** · [Português (rascunho)](README.pt-BR.md) · [Español (borrador)](README.es.md)
+
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![uv](https://img.shields.io/badge/uv-managed-6e56cf)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Hit rate](https://img.shields.io/badge/hit_rate@3-47%25_keyword_·_71%25_chroma-005efa)
+![Hit rate](https://img.shields.io/badge/hit_rate@3-59%25_keyword_·_71%25_chroma-005efa)
 
 Ask a course a question, get the passage that answers it and a citation you can open. Then **measure the thing that found it, and beat it.**
 
@@ -28,7 +30,7 @@ git clone https://github.com/Gecko-Academy/gecko-ai-coach.git
 cd gecko-ai-coach
 uv sync --extra dev
 
-uv run ai-coach ask "how do I hand a session in" --pages ../dev3pack-cohort-2026-09/units/en
+uv run ai-coach ask "where do I submit my work" --pages ../dev3pack-cohort-2026-09/units/en
 ```
 
 No key, no download, no network: the default retriever reads the pages and quotes them.
@@ -77,24 +79,31 @@ before you copy it.
 
 ## It is meant to be improved
 
-This is a teaching tool, and the teaching is the improving. The retriever is a deliberately plain keyword baseline, and the number that says how plain ships with it:
+This is a teaching tool, and the teaching is the improving. The number that says how good it is ships with it:
 
 ```bash
 uv run ai-coach measure --pages ../dev3pack-cohort-2026-09/units/en --cases data/dev3pack.jsonl
 ```
 
 ```
-  67 pages  ·  retriever: keyword
+  74 pages from ../dev3pack-cohort-2026-09/units/en  ·  retriever: keyword
 
-  hit rate @3: 47%  (17 questions)
+  hit rate @3: 59%  (17 questions)
 
   ok   where do I submit my work
   MISS how do I hand in a session
          wanted unit0/how-to-submit
-         got    unit0/introduction, unit0/w09-mcp-first-server/slides
+         got    unit0/week1, unit0/week2, unit0/week3
 ```
 
-A pull request that moves that number — **and says by how much, on which set** — is the contribution this project wants. The best score gets merged, and the bar moves.
+**You can help without writing code.** Found a question the coach gets wrong? One command checks it and saves it as a test:
+
+```bash
+uv run ai-coach propose "can I use claude instead of a local model" --page unit0/runtime-lanes \
+  --pages ../dev3pack-cohort-2026-09/units/en --write
+```
+
+[CONTRIBUTING.md](CONTRIBUTING.md) walks through it step by step, from that first ten-minute pull request to changing the ranking — with good first issues taken from real misses.
 
 ## Where the headroom is
 
@@ -113,7 +122,7 @@ Most people arrive believing 6 is the whole job. `measure` is there to disagree 
 
 | Name | Needs | Hit rate @3 | Notes |
 |---|---|---|---|
-| `keyword` | nothing | **47%** | the default: no dependency, no download, instant |
+| `keyword` | nothing | **59%** | the default: no dependency, no download, instant. `--baseline` measures it with the ranking improvements off: 47% |
 | `chroma` | `chromadb` and a model download | **71%** | embeddings, with a similarity floor |
 
 ```bash
@@ -159,8 +168,8 @@ from pathlib import Path
 from gecko_ai_coach import corpus, coach
 
 documents = corpus.load(Path("units/en"))
-result = coach.answer("how do I hand a session in", documents)
-print(result.pages)  # ('unit0/how-to-submit',)
+result = coach.answer("where do I submit my work", documents)
+print(result.pages[0])  # unit0/how-to-submit
 ```
 
 `coach.answer` takes `retriever=` and `client=`, so replacing either is one line rather than a fork.
@@ -173,6 +182,6 @@ print(result.pages)  # ('unit0/how-to-submit',)
 
 ## Contributing
 
-One rule: [bring the number](CONTRIBUTING.md). Before and after, on a named set, and the regression as well as the gain.
+Start with [rung 1 of CONTRIBUTING.md](CONTRIBUTING.md#rung-1--add-a-question-the-coach-gets-wrong): ten minutes, no code. Or [review a translation](CONTRIBUTING.md#translate-the-readme) of this page. One rule for ranking changes: bring the number — before and after, on a named set, and the regression as well as the gain.
 
 MIT.
