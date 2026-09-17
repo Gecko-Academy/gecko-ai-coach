@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How to contribute, step by step
+    url: https://github.com/Gecko-Academy/gecko-ai-coach/blob/main/CONTRIBUTING.md
+    about: Four rungs, from a ten-minute first pull request to a measured ranking change.
+  - name: Add a question the coach gets wrong
+    url: https://github.com/Gecko-Academy/gecko-ai-coach/blob/main/CONTRIBUTING.md#rung-1--add-a-question-the-coach-gets-wrong
+    about: No code, ten minutes. One command checks it and writes the file for you.

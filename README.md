@@ -14,6 +14,8 @@ Built for the [Dev3Pack AI-Engineering Bootcamp](https://github.com/Gecko-Academ
 ## Contents
 
 - [Start here](#start-here)
+- [Find your way](#find-your-way)
+- [For coding assistants](#for-coding-assistants)
 - [Use it inside your harness](#use-it-inside-your-harness)
 - [It is meant to be improved](#it-is-meant-to-be-improved)
 - [Where the headroom is](#where-the-headroom-is)
@@ -40,6 +42,42 @@ To use it from anywhere else, install it straight from git. **There is no publis
 ```bash
 uv pip install "gecko-ai-coach @ git+https://github.com/Gecko-Academy/gecko-ai-coach"
 ```
+
+## Find your way
+
+**Want to contribute and not sure where to start?** Every link below opens the
+thing itself, not a folder to search.
+
+| I want to… | Go straight to |
+|---|---|
+| **make my first contribution** | [rung 1](CONTRIBUTING.md#rung-1--add-a-question-the-coach-gets-wrong) — a question the coach gets wrong: 10 minutes, no code |
+| **pick something to work on** | [good first issues](https://github.com/Gecko-Academy/gecko-ai-coach/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) — each one is a real miss |
+| **translate the README** | [Translate the README](CONTRIBUTING.md#translate-the-readme) — two drafts are waiting for a native speaker |
+| **change the ranking** | [`src/gecko_ai_coach/retrieve.py`](src/gecko_ai_coach/retrieve.py), then [rung 3](CONTRIBUTING.md#rung-3--change-one-knob-and-measure-it) |
+| **see how good it is today** | [the numbers](CONTRIBUTING.md#the-numbers-today), or run `measure` below |
+| **use it while I study** | [inside your harness](#use-it-inside-your-harness), as an MCP server |
+| **know what a pull request must contain** | [the pull request template](.github/PULL_REQUEST_TEMPLATE.md) |
+
+## For coding assistants
+
+Read [`AGENTS.md`](AGENTS.md) first. [`llms.txt`](llms.txt) is the short index,
+and `CLAUDE.md` points at the same policy — do not fork it.
+
+Then read in this order:
+
+| File | Why |
+|---|---|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | The four rungs, and the one rule: bring the number |
+| [src/gecko_ai_coach/retrieve.py](src/gecko_ai_coach/retrieve.py) | The ranking, and every switch in it |
+| [src/gecko_ai_coach/measure.py](src/gecko_ai_coach/measure.py) | What the number means, and what it cannot see |
+| [data/](data/) | The labelled sets. `held-out.jsonl` is never tuned on |
+| [tests/test_coach.py](tests/test_coach.py) | Each test's docstring names the real failure it pins |
+
+**The three rules that matter most here**, in full in `AGENTS.md`:
+
+1. **A change to ranking without before-and-after numbers is not a contribution.** Run `measure` twice and paste both.
+2. **Report the regressions**, not only the gains.
+3. **Never tune on `data/held-out.jsonl`.** Run it once, at the end.
 
 ## Use it inside your harness
 

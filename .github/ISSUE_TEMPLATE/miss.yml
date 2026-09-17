@@ -1,0 +1,38 @@
+name: A question the coach gets wrong
+description: Report a question it answers badly, so somebody can fix the ranking.
+title: "miss: "
+labels: ["good first issue", "rung 2"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Want to add it as a **test** instead, in ten minutes and no code? That is
+        [rung 1](https://github.com/Gecko-Academy/gecko-ai-coach/blob/main/CONTRIBUTING.md#rung-1--add-a-question-the-coach-gets-wrong).
+        Use this issue when you want to report or explain a miss.
+  - type: input
+    id: question
+    attributes:
+      label: The question, exactly as you asked it
+      placeholder: how do I hand in a session
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: The page that should have answered it
+      description: The page id, e.g. unit0/how-to-submit
+    validations:
+      required: true
+  - type: textarea
+    id: got
+    attributes:
+      label: What the coach returned
+      description: Paste the `measure` or `ask` output.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why do you think it missed?
+      description: Different words? A big page winning on volume? A wrong label? A guess is welcome.
