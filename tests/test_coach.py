@@ -15,7 +15,7 @@ from gecko_ai_coach import corpus
 from gecko_ai_coach.coach import answer, verify
 from gecko_ai_coach.measure import Case, load_cases, run
 from gecko_ai_coach.models import EchoClient, ModelError, get_client
-from gecko_ai_coach.retrieve import Document, retrieve
+from gecko_ai_coach.retrieve import BASELINE, Document, retrieve
 
 
 class Recorder:
@@ -34,6 +34,8 @@ class Broken:
     def complete(self, system: str, user: str) -> str:
         raise ModelError("no model server at http://localhost:11434/v1")
 
+
+#: Every improvement switched off: the original keyword baseline, exactly.
 
 PAGES = [
     Document("one", "Handing work in", "Open a pull request against the submissions repository."),
@@ -253,19 +255,30 @@ def test_the_known_weakness_is_a_vocabulary_mismatch() -> None:
     """A question in the learner's words, about a page in ours, retrieves nothing.
 
     "hand work in" and "open a pull request" mean the same thing and share no
-    token, so the baseline returns `[]` and the coach refuses. This is not a bug
+    token, so the BASELINE returns `[]` and the coach refuses. This is not a bug
     to hide in a test that avoids it: it is the single biggest thing wrong with
-    keyword retrieval, it is why `measure` exists, and closing it -- with query
-    expansion, or title weighting, or something better -- is the first issue
-    anybody should pick up.
+    keyword retrieval, and it is why `measure` exists.
 
-    If your change makes this pass, say so in the pull request, and say what it
-    cost on the questions it was not tuned on.
+    It still holds for the baseline -- every switch off -- and that is what this
+    test pins, because the gap is real in the page BODY.
     """
-    result = answer("how do I hand work in", PAGES, client=EchoClient())
+    assert retrieve("how do I hand work in", PAGES, 3, **BASELINE) == []
 
-    assert result.refused
-    assert "shares a word" in result.reason
+
+def test_title_weighting_closed_the_documented_miss_and_how() -> None:
+    """The first good-first-issue, closed, and the mechanism named.
+
+    The body still shares no word with the question. The TITLE does: the page is
+    called "Handing work in", and "work" is in the question. So the fix is the
+    title, not a synonym list -- and a question whose words appear in neither
+    would still miss. That residue is the next issue, not a solved problem.
+    """
+    found = retrieve("how do I hand work in", PAGES, 3)
+    assert [hit.chunk.doc_id for hit in found] == ["one"]
+    no_title = dict(BASELINE, bm25=True, one_per_page=True)
+    assert retrieve("how do I hand work in", PAGES, 3, **no_title) == [], (
+        "without the title, the improved scorer still cannot bridge the vocabulary"
+    )
 
 
 # --- the optional vector retriever -----------------------------------------
@@ -308,7 +321,7 @@ def test_the_vector_retriever_beats_the_keyword_one_on_vocabulary() -> None:
     """
     from gecko_ai_coach.vector import build
 
-    assert retrieve("how do I hand work in", PAGES, 3) == []
+    assert retrieve("how do I hand work in", PAGES, 3, **BASELINE) == []
     assert build(PAGES, min_score=0.0)("how do I hand work in", PAGES, 3)
 
 
@@ -410,3 +423,100 @@ def test_the_loop_survives_a_line_that_is_not_json() -> None:
 
     answered = [json.loads(line) for line in stdout.getvalue().splitlines()]
     assert [row["id"] for row in answered] == [7]
+
+
+# --- propose: the first rung ------------------------------------------------
+
+
+def test_a_real_miss_is_recognised_and_gives_the_line_to_add() -> None:
+    from gecko_ai_coach.propose import propose
+
+    found = propose("which parser rejects things", "one", PAGES)
+    assert not found.already_answered
+    assert '"expected": ["one"]' in found.line
+
+
+def test_a_question_the_coach_already_answers_is_not_worth_adding() -> None:
+    from gecko_ai_coach.propose import propose
+
+    assert propose("a strict parser rejects unknown fields", "two", PAGES).already_answered
+
+
+def test_a_misspelled_page_is_refused_with_the_nearest_ids() -> None:
+    from gecko_ai_coach.propose import ProposalError, propose
+
+    with pytest.raises(ProposalError, match="Did you mean"):
+        propose("how do I hand work in", "ones", PAGES)
+
+
+def test_a_one_word_question_is_refused() -> None:
+    """Learners do not type one word. A set of single words measures nothing real."""
+    from gecko_ai_coach.propose import ProposalError, propose
+
+    with pytest.raises(ProposalError):
+        propose("parser", "two", PAGES)
+
+
+def test_a_duplicate_is_not_added_twice(tmp_path) -> None:
+    from gecko_ai_coach.propose import already_listed
+
+    (tmp_path / "someone-elses-name.jsonl").write_text(
+        '{"question": "What is a lane", "expected": ["x"]}\n'
+    )
+    assert already_listed("what is a LANE?", tmp_path)
+    assert not already_listed("what is a road", tmp_path)
+
+
+def test_a_question_from_the_held_out_set_is_not_added_again(tmp_path) -> None:
+    """Copied into the community folder, it would be tuned on, and stop being held out."""
+    from gecko_ai_coach.propose import already_listed
+
+    (tmp_path / "held-out.jsonl").write_text('{"question": "what is a lane", "expected": ["x"]}\n')
+    assert already_listed("What is a lane?", tmp_path / "community")
+
+
+def test_two_learners_adding_questions_never_touch_the_same_file() -> None:
+    """One file per question, so two first pull requests cannot conflict."""
+    from gecko_ai_coach.propose import Proposal
+
+    first = Proposal("What is a lane?", "one", ())
+    second = Proposal("how do I hand in", "two", ())
+    assert first.filename == "what-is-a-lane.jsonl"
+    assert first.filename != second.filename
+
+
+def test_a_directory_of_community_files_is_one_labelled_set(tmp_path) -> None:
+    (tmp_path / "b.jsonl").write_text('{"question": "second one here", "expected": ["two"]}\n')
+    (tmp_path / "a.jsonl").write_text(
+        '# note\n{"question": "first one here", "expected": ["one"]}\n'
+    )
+    (tmp_path / "README.md").write_text("not a case")
+    assert [case.question for case in load_cases(tmp_path)] == ["first one here", "second one here"]
+
+
+def test_measure_baseline_reports_the_number_before_the_improvements(tmp_path, capsys) -> None:
+    """Rung 3 of the ladder is "change one knob, report before and after".
+    A beginner must get the BEFORE without learning git stash first."""
+    from gecko_ai_coach.cli import main
+
+    pages = tmp_path / "units" / "en" / "unit0"
+    pages.mkdir(parents=True)
+    (pages / "lanes.mdx").write_text("# Runtime lanes\n\nA lane is where code runs.\n")
+    (pages / "other.mdx").write_text("# Other\n\nlane lane lane lane lane lane.\n")
+    cases = tmp_path / "cases.jsonl"
+    cases.write_text('{"question": "what is a lane", "expected": ["unit0/lanes"]}\n')
+
+    assert (
+        main(
+            [
+                "measure",
+                "--pages",
+                str(tmp_path / "units" / "en"),
+                "--cases",
+                str(cases),
+                "--baseline",
+            ]
+        )
+        == 0
+    )
+    assert "(baseline)" in capsys.readouterr().out

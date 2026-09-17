@@ -81,13 +81,24 @@ class Report:
 
 
 def load_cases(path: Path) -> list[Case]:
-    """Read a JSONL labelled set: one object per line.
+    """Read a JSONL labelled set: one object per line. A directory reads every
+    `*.jsonl` inside it, in name order -- that is how `data/community/` works.
 
     {"question": "how do I hand in a session", "expected": ["unit0/how-to-submit"]}
     {"question": "what is the airspeed of a swallow", "expect_refusal": true}
     """
-    if not path.is_file():
+    if path.is_dir():
+        cases = [case for file in sorted(path.glob("*.jsonl")) for case in _read(file)]
+    elif path.is_file():
+        cases = _read(path)
+    else:
         raise CaseError(f"no labelled set at {path}")
+    if not cases:
+        raise CaseError(f"{path} holds no cases")
+    return cases
+
+
+def _read(path: Path) -> list[Case]:
     cases: list[Case] = []
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         line = line.strip()
@@ -107,8 +118,6 @@ def load_cases(path: Path) -> list[Case]:
                 expect_refusal=bool(row.get("expect_refusal", False)),
             )
         )
-    if not cases:
-        raise CaseError(f"{path} holds no cases")
     return cases
 
 

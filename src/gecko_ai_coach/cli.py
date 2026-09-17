@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import argparse
 import sys
+from functools import partial
 from pathlib import Path
 
 from gecko_ai_coach import corpus
 from gecko_ai_coach.coach import answer
 from gecko_ai_coach.measure import CaseError, load_cases, run
 from gecko_ai_coach.models import PROVIDERS, ModelError, get_client
+from gecko_ai_coach.retrieve import BASELINE, retrieve
 
 
 def _pages(argument: str | None) -> Path:
@@ -83,7 +85,9 @@ def _retriever(name: str, documents):  # type: ignore[no-untyped-def]
     return build(documents)
 
 
-def _measure(pages: Path, cases_path: Path, top_k: int, retriever_name: str = "") -> int:
+def _measure(
+    pages: Path, cases_path: Path, top_k: int, retriever_name: str = "", baseline: bool = False
+) -> int:
     documents = corpus.load(pages)
     try:
         cases = load_cases(cases_path)
@@ -92,6 +96,10 @@ def _measure(pages: Path, cases_path: Path, top_k: int, retriever_name: str = ""
         return 2
     try:
         chosen = _retriever(retriever_name, documents)
+        if baseline:
+            if chosen is not None:
+                raise ValueError("--baseline switches off the keyword improvements only")
+            chosen = partial(retrieve, **BASELINE)
     except (ValueError, Exception) as error:  # noqa: B014 - VectorError is an Exception
         print(str(error), file=sys.stderr)
         return 2
@@ -100,7 +108,7 @@ def _measure(pages: Path, cases_path: Path, top_k: int, retriever_name: str = ""
         if chosen is None
         else run(cases, documents, retriever=chosen, top_k=top_k)
     )
-    label = retriever_name or "keyword"
+    label = (retriever_name or "keyword") + (" (baseline)" if baseline else "")
     print(f"\n  {len(documents)} pages from {pages}  ·  retriever: {label}\n")
     print(report.rendered())
     print()
@@ -120,6 +128,28 @@ def _providers() -> int:
             print(f"  {'':<12} {lane.note}")
         print()
     print("  echo         no model at all: quote the pages and say nothing more\n")
+    return 0
+
+
+def _propose(question: str, page: str, pages: Path, write: bool) -> int:
+    from gecko_ai_coach import corpus
+    from gecko_ai_coach.propose import COMMUNITY, ProposalError, already_listed, propose, render
+
+    try:
+        proposal = propose(question, page, corpus.load(pages))
+    except ProposalError as error:
+        print(f"  {error}")
+        return 2
+    if already_listed(proposal.question, COMMUNITY):
+        print(f'  "{proposal.question}" is already in data/. Thank you anyway -- try another one.')
+        return 0
+    print(render(proposal))
+    if not write or proposal.already_answered:
+        return 0
+    COMMUNITY.mkdir(parents=True, exist_ok=True)
+    written = COMMUNITY / proposal.filename
+    written.write_text(proposal.line + "\n", encoding="utf-8")
+    print(f"\n  Wrote {written}. Commit it and open the pull request -- see CONTRIBUTING.md.")
     return 0
 
 
@@ -144,6 +174,21 @@ def main(argv: list[str] | None = None) -> int:
     measurer.add_argument(
         "--retriever", default="", help="keyword (default) or chroma, with the vector extra"
     )
+    measurer.add_argument(
+        "--baseline",
+        action="store_true",
+        help="switch every ranking improvement off: the number a change is compared with",
+    )
+
+    proposer = sub.add_parser(
+        "propose", help="check a question the coach gets wrong, and add it (a first contribution)"
+    )
+    proposer.add_argument("question", help="the question, the way a learner would ask it")
+    proposer.add_argument("--page", required=True, help="the page id that SHOULD answer it")
+    proposer.add_argument("--pages", help="the corpus directory (default: the working directory)")
+    proposer.add_argument(
+        "--write", action="store_true", help="save it under data/community/ if it is a real miss"
+    )
 
     sub.add_parser("providers", help="the model lanes this knows about")
 
@@ -158,7 +203,11 @@ def main(argv: list[str] | None = None) -> int:
             args.retriever,
         )
     if args.command == "measure":
-        return _measure(_pages(args.pages), Path(args.cases), args.top_k, args.retriever)
+        return _measure(
+            _pages(args.pages), Path(args.cases), args.top_k, args.retriever, args.baseline
+        )
+    if args.command == "propose":
+        return _propose(args.question, args.page, _pages(args.pages), args.write)
     if args.command == "providers":
         return _providers()
     parser.print_help()
