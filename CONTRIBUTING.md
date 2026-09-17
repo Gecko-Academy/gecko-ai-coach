@@ -253,16 +253,21 @@ commit and push again to the same branch. The pull request updates by itself.
 
 ## The numbers today
 
-Measured on the public cohort pages (74 pages), 18 September 2026, `top_k=3`:
+Measured on the public cohort pages (79 pages), 18 September 2026, `top_k=3`:
 
 | Set | Questions | `--baseline` | Keyword, as shipped | Chroma |
 |---|---|---|---|---|
 | `data/dev3pack.jsonl` | 17 | 47% | **65%** | 71% |
-| `data/course-questions.jsonl` | 25 | 68% | **76%** | not measured |
-| `data/held-out.jsonl` | 24 | 79% | **83%** | not measured |
+| `data/course-questions.jsonl` | 25 | 48% | **76%** | not measured |
+| `data/held-out.jsonl` | 24 | 79% | **88%** | not measured |
 
 The held-out set was written before the ranking change, and nobody tuned on it.
 That is why it moved least, and why it is the most honest number in the table.
+
+**The corpus moves too.** These were 74 pages last week and 79 today, and
+`course-questions` read 68% against the smaller one with the retriever
+untouched. Measure before and after **on the same clone** — `git pull` in the
+middle of a comparison and you are reporting the week, not your change.
 
 **Tune on** `dev3pack` and `course-questions`. **Report, but never tune on,**
 `held-out` and `community`.

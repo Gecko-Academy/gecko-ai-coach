@@ -150,8 +150,13 @@ def retrieve(
     against the public cohort pages, turning all three on moved:
 
         data/dev3pack.jsonl          47% -> 65%   (59% before the floor)
-        data/course-questions.jsonl  68% -> 76%
-        data/held-out.jsonl          79% -> 83%
+        data/course-questions.jsonl  48% -> 76%
+        data/held-out.jsonl          79% -> 88%
+
+    Re-measured on 18 September against 79 pages. The corpus grows every week,
+    and these numbers move with it: `course-questions` read 68% against 74
+    pages and 48% against 79, with the retriever untouched. Measure before and
+    after on the SAME clone, or the difference is about the week, not the code.
 
     The sort key is load-bearing: `(-score, doc_id, position)` makes the same
     question return the same passages on every machine, so a measured
