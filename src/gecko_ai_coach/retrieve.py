@@ -62,7 +62,16 @@ class ScoredChunk:
 
 
 def tokens(text: str) -> list[str]:
-    return [t for t in _TOKEN_RE.findall(text.lower()) if t not in STOPWORDS]
+    result: list[str] = []
+    for token in _TOKEN_RE.findall(text.lower()):
+        if token in STOPWORDS:
+            continue
+        # Keep the baseline dependency-free, but make common adverbs match
+        # their adjective: "locally" should retrieve a page about "local".
+        if len(token) > 5 and token.endswith("ly"):
+            token = token[:-2]
+        result.append(token)
+    return result
 
 
 def chunk_document(doc: Document, max_chars: int = 800) -> list[Chunk]:
