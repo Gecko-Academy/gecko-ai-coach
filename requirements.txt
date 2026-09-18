@@ -1,0 +1,2 @@
+# No runtime dependencies: the coach is stdlib only.
+# Vercel needs this file to recognise a Python project.

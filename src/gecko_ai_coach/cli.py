@@ -117,6 +117,39 @@ def _measure(
     return 0
 
 
+def _telegram(poll: bool, set_webhook: str, delete_webhook: bool, pages: str | None) -> int:
+    """Answer the course's questions in Telegram. The token comes from the environment."""
+    from gecko_ai_coach import telegram
+    from gecko_ai_coach.chat import local_pages, published_pages
+
+    if not telegram.token():
+        print(
+            "no bot token. Talk to @BotFather, then either:\n"
+            "    gecko auth set COACH_BOT_TOKEN      # into the OS keychain\n"
+            "    export COACH_BOT_TOKEN=123456:ABC...",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        if set_webhook:
+            telegram.set_webhook(set_webhook)
+            print(f"webhook set: {set_webhook}")
+            return 0
+        if delete_webhook:
+            telegram.delete_webhook()
+            print("webhook removed — long polling works again")
+            return 0
+        documents = local_pages(pages) if pages else published_pages()
+        print(f"{len(documents)} pages loaded")
+        telegram.poll(documents)
+    except telegram.TelegramError as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        print("\nstopped.")
+    return 0
+
+
 def _providers() -> int:
     print()
     for name, lane in sorted(PROVIDERS.items()):
@@ -192,6 +225,12 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("providers", help="the model lanes this knows about")
 
+    bot = sub.add_parser("telegram", help="answer questions in Telegram (needs a bot token)")
+    bot.add_argument("--poll", action="store_true", help="long polling: no host, no domain")
+    bot.add_argument("--set-webhook", default="", metavar="URL", help="point Telegram at a host")
+    bot.add_argument("--delete-webhook", action="store_true", help="go back to polling")
+    bot.add_argument("--pages", help="answer from a local clone instead of the published course")
+
     args = parser.parse_args(argv)
     if args.command == "ask":
         return _ask(
@@ -208,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.command == "propose":
         return _propose(args.question, args.page, _pages(args.pages), args.write)
+    if args.command == "telegram":
+        return _telegram(args.poll, args.set_webhook, args.delete_webhook, args.pages)
     if args.command == "providers":
         return _providers()
     parser.print_help()
