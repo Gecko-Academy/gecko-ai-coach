@@ -57,6 +57,7 @@ thing itself, not a folder to search.
 | **see how good it is today** | [the numbers](CONTRIBUTING.md#the-numbers-today), or run `measure` below |
 | **use it while I study** | [inside your harness](#use-it-inside-your-harness), as an MCP server |
 | **know what a pull request must contain** | [the pull request template](.github/PULL_REQUEST_TEMPLATE.md) |
+| **see a real one, command by command** | [PR #14](https://github.com/Gecko-Academy/gecko-ai-coach/pull/14), and [the walkthrough](CONTRIBUTING.md#read-a-real-one-first) of how it was made |
 
 ## For coding assistants
 

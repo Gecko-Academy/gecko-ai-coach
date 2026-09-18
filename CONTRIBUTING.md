@@ -11,6 +11,7 @@ an issue, and each one makes the coach measurably better for the whole cohort.
 - [Rung 2 — explain a miss](#rung-2--explain-a-miss) · 30 min · no code
 - [Translate the README](#translate-the-readme) · 30 min · no code
 - [Rung 3 — change one knob, and measure it](#rung-3--change-one-knob-and-measure-it) · 1–2 h · a few lines of Python
+- [Read a real one first](#read-a-real-one-first) · the pull request that closed issue #7, command by command
 - [Rung 4 — bigger work](#rung-4--bigger-work) · open an issue first
 - [Open the pull request](#open-the-pull-request)
 - [The numbers today](#the-numbers-today)
@@ -215,6 +216,82 @@ also when it went down. Expect it to move less than the other two.
 keyword retriever. Use it to see what an existing knob is worth.
 
 Pull request title: `rank: <what you changed>`
+
+## Read a real one first
+
+**[Pull request #14](https://github.com/Gecko-Academy/gecko-ai-coach/pull/14)
+is this guide, done.** It is a rung-3 change — a floor so the coach can refuse a
+question the pages do not cover — and it was written to the template below,
+numbers and all. Read it before you write yours; it is shorter than this page.
+
+Here is every command that produced it, in order. Run them yourself on any
+branch: they change nothing until you do.
+
+**1. The number before anything changed.** On the two sets you may tune on:
+
+```bash
+uv run ai-coach measure --pages ../dev3pack-cohort-2026-09/units/en --cases data/dev3pack.jsonl > before-dev.txt
+uv run ai-coach measure --pages ../dev3pack-cohort-2026-09/units/en --cases data/course-questions.jsonl > before-course.txt
+grep "hit rate" before-*.txt
+#   before-course.txt:  hit rate @3: 76%  (25 questions)
+#   before-dev.txt:     hit rate @3: 59%  (17 questions)
+```
+
+**2. Look at the actual failure**, rather than guessing from the miss line:
+
+```bash
+uv run ai-coach ask "how do I deploy a kubernetes ingress controller" \
+  --pages ../dev3pack-cohort-2026-09/units/en
+#   it answers, confidently, from a page about deploying a capstone
+```
+
+Three of that question's four words appear nowhere in the course. One shared
+word — `deploy` — was enough.
+
+**3. Try the change, and measure the shape of it.** The first idea was to drop
+any chunk that carries too little of the question. It worked, and it **cost**
+`do I need to fork anything` its answer, because that question's words are spread
+across its page. The second idea — judge the *page* the winner came from — cost
+nothing:
+
+| Shape | dev3pack | course-questions | regressions |
+|---|---|---|---|
+| per chunk, floor 0.4 | 65% | 72% | `do I need to fork anything` |
+| per page, floor 0.4 | **65%** | **76%** | none |
+
+**4. Choose the number by measuring it**, not by taste. The plateau is wide, so
+0.4 sits in the middle of it, furthest from both cliffs:
+
+| floor | dev3pack | course-questions | refusals |
+|---|---|---|---|
+| 0.20 | 59% | 76% | 1/2 |
+| 0.26 | 65% | 76% | 2/2 |
+| **0.40** | **65%** | **76%** | **2/2** |
+| 0.50 | 65% | 76% | 2/2 |
+| 0.55 | 53% | 76% | 2/2 |
+
+**5. The tests, and then break them on purpose.** A test that passes when the
+feature is gone is not a test:
+
+```bash
+uv run pytest -q                     # 66 passed
+# then, by hand: disable the new code and run the same tests again
+#   they must FAIL. Put it back; they must pass.
+```
+
+**6. Only now, the held-out set — once.**
+
+```bash
+uv run ai-coach measure --pages ../dev3pack-cohort-2026-09/units/en --cases data/held-out.jsonl
+#   hit rate @3: 88%  (24 questions)   — unchanged
+```
+
+**7. Report it, including the part that went wrong.** The first push of that
+branch said held-out was 83%. It had been measured against a clone two commits
+behind; CI clones fresh and read 88%. The conclusion did not change, but the
+number did — so the pull request says so, in the open, above the table. **That
+correction is part of the example.** Nobody will think less of you for it, and
+the alternative is a number in a table that is quietly wrong.
 
 ## Rung 4 — bigger work
 
