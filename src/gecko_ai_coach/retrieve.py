@@ -74,6 +74,17 @@ def tokens(text: str) -> list[str]:
     return result
 
 
+def _submission_text(query: str) -> str:
+    """Normalize submission phrases without rewriting unrelated words."""
+    return re.sub(
+        r"\bhand(?:ing)?\s+(?:(?P<item>(?:(?:my|your|the|our|a)\s+)?"
+        r"(?:work|homework|notebook|assignment|session))\s+)?in\b(?!\s+hand\b)",
+        lambda match: "submit " + (match.group("item") or ""),
+        query,
+        flags=re.IGNORECASE,
+    )
+
+
 def chunk_document(doc: Document, max_chars: int = 800) -> list[Chunk]:
     """Pack whole paragraphs into chunks of at most `max_chars` characters.
 
@@ -105,6 +116,7 @@ BASELINE: dict[str, bool | float] = {
     "min_coverage": 0.0,
     "slides_weight": 1.0,
     "quiz_weight": 1.0,
+    "submission_synonyms": False,
 }
 
 #: How much of the question has to appear on the winning page before the answer
@@ -124,6 +136,7 @@ def retrieve(
     min_coverage: float = MIN_COVERAGE,
     slides_weight: float = 0.75,
     quiz_weight: float = 0.0,
+    submission_synonyms: bool = True,
 ) -> list[ScoredChunk]:
     """Score chunks against a question, and return the best `top_k`.
 
@@ -158,6 +171,10 @@ def retrieve(
     absolute and "what does the session 8 quiz ask" -- a question a student really
     types -- gets a refusal, because the only page that could answer it was the one
     page scored to nothing.
+    `submission_synonyms` rewrites "hand in" and "hand my work in" to
+    submission wording before scoring and coverage checks, on queries and
+    pages alike (including "Handing work in" titles). Disabling it restores
+    literal matching.
 
     WHY COVERAGE, AND NOT THE SCORE. A score is a sum over the words that
     matched, so it grows with the length of the question: a floor of "4.0"
@@ -188,15 +205,19 @@ def retrieve(
     question return the same passages on every machine, so a measured
     improvement is a property of the change and not of the hardware.
     """
-    query_tokens = set(tokens(query))
+
+    def tokenize(text: str) -> list[str]:
+        return tokens(_submission_text(text) if submission_synonyms else text)
+
+    query_tokens = set(tokenize(query))
     if not query_tokens:
         return []
     all_chunks = [chunk for doc in documents for chunk in chunk_document(doc, max_chars)]
     if not all_chunks:
         return []
 
-    bodies = [tokens(chunk.text) for chunk in all_chunks]
-    titles = [set(tokens(chunk.title)) for chunk in all_chunks]
+    bodies = [tokenize(chunk.text) for chunk in all_chunks]
+    titles = [set(tokenize(chunk.title)) for chunk in all_chunks]
 
     frequency: dict[str, int] = {}
     for body in bodies:
@@ -241,7 +262,7 @@ def retrieve(
         # worth of work rather than the corpus's.
         pages = {doc.doc_id: doc for doc in documents}
         best = pages[scored[0].chunk.doc_id]
-        words = set(tokens(best.text)) | set(tokens(best.title))
+        words = set(tokenize(best.text)) | set(tokenize(best.title))
         if len(query_tokens & words) / len(query_tokens) < min_coverage:
             return []
     if one_per_page:
