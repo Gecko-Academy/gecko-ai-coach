@@ -12,7 +12,7 @@
 {"question": "which file do the repository instructions go in", "expected": ["unit1/session-01-assistant-configuration/concepts-1", "unit1/session-01-assistant-configuration/concepts-2"]}
 {"question": "how do I call a model without using a vendor SDK", "expected": ["unit1/session-02-model-adapter/introduction", "unit1/session-02-model-adapter/concepts-1"]}
 {"question": "what happens when the model returns bad JSON", "expected": ["unit1/session-03-structured-outputs/introduction", "unit1/session-03-structured-outputs/concepts-1"]}
-{"question": "how do I stop a tool doing something dangerous", "expected": ["unit1/session-04-bounded-tools/introduction"]}
+{"question": "how do I stop a tool doing something dangerous", "expected": ["unit1/session-04-bounded-tools/introduction", "unit1/session-04-bounded-tools/concepts-1"]}
 {"question": "what stops an agent looping forever", "expected": ["unit1/session-05-deterministic-mini-agent/introduction"]}
 {"question": "what is prompt injection", "expected": ["unit1/session-04-bounded-tools/introduction", "unit1/session-04-bounded-tools/concepts-1", "unit1/session-04-bounded-tools/concepts-3"]}
 {"question": "is there anything optional I can read", "expected": ["bonus/b01-graph-rag/introduction", "tracks/depth/introduction"]}
