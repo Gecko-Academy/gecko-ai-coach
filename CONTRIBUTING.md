@@ -405,3 +405,73 @@ Without that, nobody can tell an improvement from a change.
 ## Licence
 
 MIT. By contributing, you agree to license your contribution under it.
+
+## Chunk-size measurement (22 September 2026)
+
+Issue #10 compares `max_chars=400`, `800` (the unchanged default), and `1200`.
+
+Measured with coach commit `cc13cb93ea80` against 79 pages at
+course commit `c5aa6f4027d5`. All variants used the same local corpus.
+
+Corpus fingerprint (SHA-256 of each loaded page ID, newline, and stripped text,
+in corpus order):
+
+`7bd1e7a89df8e87125da2d16cbc3a1abe42db591836fcb89c0c2d4df9a8a3a57`
+
+This experiment changes no runtime default. Development sets were measured
+first; held-out was measured once per fixed size at the end, with no tuning
+afterwards. `data/community/` had no cases, so its result is unavailable, not 0%.
+
+| Set | 400 characters | 800 characters | 1200 characters |
+|---|---|---|---|
+| `data/dev3pack.jsonl` | 76% (13/17) | 76% (13/17) | 71% (12/17) |
+| `data/course-questions.jsonl` | 72% (18/25) | 80% (20/25) | 76% (19/25) |
+| `data/held-out.jsonl` | 79% (19/24) | 88% (21/24) | 83% (20/24) |
+| `data/community/` | No cases | No cases | No cases |
+
+The smaller and larger chunks both lose development-set answers relative to
+800. These results support keeping the default for this corpus; they do not
+establish a best size for other corpora.
+
+Every regression (`ok` at 800 to `MISS` at the alternative size):
+
+**400 characters**
+
+- `data/dev3pack.jsonl`: none.
+- `data/course-questions.jsonl`: `do I need to fork anything`; `how is the course marked`; `what is AGENTS.md for`.
+- `data/held-out.jsonl`: `what makes a function a good tool`; `my guard flags an innocent sentence`.
+
+**1200 characters**
+
+- `data/dev3pack.jsonl`: `is there anything optional I can read`.
+- `data/course-questions.jsonl`: `what is AGENTS.md for`.
+- `data/held-out.jsonl`: `what makes a function a good tool`; `my guard flags an innocent sentence`.
+
+Reproduce from the repository root after installing the development tools.
+This calls the same measurement function as `ai-coach measure` and prints each
+miss. Run report-only sets only after freezing the candidate sizes.
+
+```python
+from functools import partial
+from pathlib import Path
+
+from gecko_ai_coach.corpus import load
+from gecko_ai_coach.measure import CaseError, load_cases, run
+from gecko_ai_coach.retrieve import retrieve
+
+documents = load(Path("../dev3pack-cohort-2026-09/units/en"))
+for name in (
+    "data/dev3pack.jsonl",
+    "data/course-questions.jsonl",
+    "data/held-out.jsonl",
+    "data/community/",
+):
+    try:
+        cases = load_cases(Path(name))
+    except CaseError as error:
+        print(f"{name}: unavailable ({error})")
+        continue
+    for size in (400, 800, 1200):
+        print(f"\n{name}, max_chars={size}")
+        print(run(cases, documents, retriever=partial(retrieve, max_chars=size)).rendered())
+```
