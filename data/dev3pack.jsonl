@@ -6,7 +6,7 @@
 {"question": "where do I submit my work", "expected": ["unit0/how-to-submit"]}
 {"question": "do I need an API key to do the exercises", "expected": ["unit0/runtime-lanes", "unit0/onboarding", "unit0/local-model"]}
 {"question": "can I run this without a GPU", "expected": ["unit0/runtime-lanes"]}
-{"question": "what do I install to get started", "expected": ["unit0/onboarding"]}
+{"question": "what do I install to get started", "expected": ["unit0/onboarding", "unit0/get-settled"]}
 {"question": "what happens in week 1", "expected": ["unit0/week1"]}
 {"question": "how do I set up my coding assistant", "expected": ["unit1/session-01-assistant-configuration/introduction"]}
 {"question": "which file do the repository instructions go in", "expected": ["unit1/session-01-assistant-configuration/concepts-1", "unit1/session-01-assistant-configuration/concepts-2"]}
