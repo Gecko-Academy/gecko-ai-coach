@@ -22,6 +22,7 @@ import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
@@ -74,6 +75,73 @@ def tokens(text: str) -> list[str]:
     return result
 
 
+#: What can be handed in. The rule REQUIRES one of these, and that requirement is
+#: the whole guard. Measured 2026-09-25 against the looser version, which made the
+#: item optional: "which hand in the diagram is the pointer" became "which submit
+#: the diagram", and "the second hand in the clock diagram" became "the second
+#: submit the clock diagram". Neither question is about submitting anything. A
+#: rewrite rule that fires on a body part and a clock is not a rule, it is a
+#: coincidence that held on the set it was written against.
+_SUBMISSION_ITEM = r"(?:work|homework|notebook|assignment|session|exercise|project)"
+_SUBMISSION_DET = r"(?:my|your|our|their|the|a)\s+"
+
+#: Both orders a person writes it in, and the tenses they write it in. `handed` was
+#: missing before: "I handed my notebook in last week, where does it go" went
+#: through untouched, which is the same rule failing in the other direction.
+#:
+#: THE THIRD BRANCH IS WHERE THE GRAMMAR DOES THE WORK. Requiring an item on every
+#: branch cost a real question — `how do I hand in a session` stopped finding
+#: `unit0/how-to-submit`, because that page says "handing in again is the normal
+#: case" and the item requirement dropped it. But every false positive we found
+#: came from the bare NOUN: a hand in a diagram, the second hand in a clock, hand
+#: in hand. `handing` and `handed` cannot be that noun in English, so they are
+#: safe without an item and bare `hand` is not. `hands` stays out for the same
+#: reason `hand` does — "which hands in the photo are raised".
+#:
+#: The fourth branch is the same argument at the other end of the sentence. A bare
+#: `hand in` with NOTHING after it is intransitive and cannot be a body part in a
+#: diagram, because the diagram never arrives -- so "how do I hand in" works while
+#: "hand in the diagram" and "hand in kubernetes ingress controller configuration"
+#: both decline. Position does the disambiguating that a word list cannot.
+#:
+#: That is the difference between a rule and a coincidence: every branch here
+#: declines because of what the words ARE and where they sit, not because of a list
+#: someone remembered to write.
+_SUBMISSION_RE = re.compile(
+    rf"\bhand(?:ed|ing|s)?\s+(?P<pre>{_SUBMISSION_DET}?{_SUBMISSION_ITEM})\s+in\b"
+    rf"|\bhand(?:ed|ing|s)?\s+in\s+(?P<post>{_SUBMISSION_DET}?{_SUBMISSION_ITEM})\b"
+    rf"|\bhand(?:ed|ing)\s+in\b"
+    rf"|\bhand\s+in\b(?=[\s.,;:!?]*$)",
+    re.IGNORECASE,
+)
+
+
+@lru_cache(maxsize=8192)
+def _submission_text(query: str) -> str:
+    """Normalize submission phrases without rewriting unrelated words.
+
+    CACHED, and the cache is not a micro-optimisation. This runs over every chunk
+    body and every title on every question, so its cost is proportional to the
+    corpus, per query, in the code that answers people on Telegram. Measured on
+    158 pages / 688 KB: 30.3 ms/query without the rewrite, 36.0 with it, 31.9 with
+    it cached — 103,742 hits against 1,208 misses, because page text repeats on
+    every question and only the question itself is new.
+
+    That still leaves the per-query chunking and tokenising this sits inside, which
+    is the older and larger cost and is not this rule's to fix.
+
+    Requiring an item (see `_SUBMISSION_ITEM`) also removed the need for the old
+    `(?!\s+hand\b)` lookahead that kept "hand in hand" out: "hand" is not
+    something you hand in, so the rule declines on its own.
+    """
+    return _SUBMISSION_RE.sub(
+        lambda match: (
+            "submit " + item if (item := match.group("pre") or match.group("post")) else "submit"
+        ),
+        query,
+    )
+
+
 def chunk_document(doc: Document, max_chars: int = 800) -> list[Chunk]:
     """Pack whole paragraphs into chunks of at most `max_chars` characters.
 
@@ -105,6 +173,7 @@ BASELINE: dict[str, bool | float] = {
     "min_coverage": 0.0,
     "slides_weight": 1.0,
     "quiz_weight": 1.0,
+    "submission_synonyms": False,
 }
 
 #: How much of the question has to appear on the winning page before the answer
@@ -124,6 +193,7 @@ def retrieve(
     min_coverage: float = MIN_COVERAGE,
     slides_weight: float = 0.75,
     quiz_weight: float = 0.0,
+    submission_synonyms: bool = True,
 ) -> list[ScoredChunk]:
     """Score chunks against a question, and return the best `top_k`.
 
@@ -158,6 +228,10 @@ def retrieve(
     absolute and "what does the session 8 quiz ask" -- a question a student really
     types -- gets a refusal, because the only page that could answer it was the one
     page scored to nothing.
+    `submission_synonyms` rewrites "hand in" and "hand my work in" to
+    submission wording before scoring and coverage checks, on queries and
+    pages alike (including "Handing work in" titles). Disabling it restores
+    literal matching.
 
     WHY COVERAGE, AND NOT THE SCORE. A score is a sum over the words that
     matched, so it grows with the length of the question: a floor of "4.0"
@@ -188,15 +262,19 @@ def retrieve(
     question return the same passages on every machine, so a measured
     improvement is a property of the change and not of the hardware.
     """
-    query_tokens = set(tokens(query))
+
+    def tokenize(text: str) -> list[str]:
+        return tokens(_submission_text(text) if submission_synonyms else text)
+
+    query_tokens = set(tokenize(query))
     if not query_tokens:
         return []
     all_chunks = [chunk for doc in documents for chunk in chunk_document(doc, max_chars)]
     if not all_chunks:
         return []
 
-    bodies = [tokens(chunk.text) for chunk in all_chunks]
-    titles = [set(tokens(chunk.title)) for chunk in all_chunks]
+    bodies = [tokenize(chunk.text) for chunk in all_chunks]
+    titles = [set(tokenize(chunk.title)) for chunk in all_chunks]
 
     frequency: dict[str, int] = {}
     for body in bodies:
@@ -241,7 +319,7 @@ def retrieve(
         # worth of work rather than the corpus's.
         pages = {doc.doc_id: doc for doc in documents}
         best = pages[scored[0].chunk.doc_id]
-        words = set(tokens(best.text)) | set(tokens(best.title))
+        words = set(tokenize(best.text)) | set(tokenize(best.title))
         if len(query_tokens & words) / len(query_tokens) < min_coverage:
             return []
     if one_per_page:
