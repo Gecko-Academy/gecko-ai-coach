@@ -103,6 +103,7 @@ BASELINE: dict[str, bool | float] = {
     "title_weight": 0.0,
     "one_per_page": False,
     "min_coverage": 0.0,
+    "slides_weight": 1.0,
 }
 
 #: How much of the question has to appear on the winning page before the answer
@@ -120,6 +121,7 @@ def retrieve(
     title_weight: float = 1.0,
     one_per_page: bool = True,
     min_coverage: float = MIN_COVERAGE,
+    slides_weight: float = 0.75,
 ) -> list[ScoredChunk]:
     """Score chunks against a question, and return the best `top_k`.
 
@@ -141,6 +143,10 @@ def retrieve(
     `min_coverage`  how much of the question has to appear on the winning page.
                     Below it nothing is returned, which is how this retriever
                     refuses a question the pages do not cover.
+
+    `slides_weight` discounts slides for general questions, while explicit
+    requests for slides or a deck keep their original score. Set it to 1.0
+    to disable the discount.
 
     WHY COVERAGE, AND NOT THE SCORE. A score is a sum over the words that
     matched, so it grows with the length of the question: a floor of "4.0"
@@ -206,6 +212,10 @@ def retrieve(
                     score += weight
             if title_weight and token in title:
                 score += title_weight * weight
+        if chunk.doc_id.rsplit("/", 1)[-1] == "slides" and not (
+            {"slides", "slide", "deck"} & query_tokens
+        ):
+            score *= slides_weight
         if score > 0:
             scored.append(ScoredChunk(chunk=chunk, score=round(score, 6)))
 
