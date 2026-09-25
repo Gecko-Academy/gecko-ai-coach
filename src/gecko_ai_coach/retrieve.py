@@ -104,6 +104,7 @@ BASELINE: dict[str, bool | float] = {
     "one_per_page": False,
     "min_coverage": 0.0,
     "slides_weight": 1.0,
+    "quiz_weight": 1.0,
 }
 
 #: How much of the question has to appear on the winning page before the answer
@@ -122,6 +123,7 @@ def retrieve(
     one_per_page: bool = True,
     min_coverage: float = MIN_COVERAGE,
     slides_weight: float = 0.75,
+    quiz_weight: float = 0.0,
 ) -> list[ScoredChunk]:
     """Score chunks against a question, and return the best `top_k`.
 
@@ -147,6 +149,15 @@ def retrieve(
     `slides_weight` discounts slides for general questions, while explicit
     requests for slides or a deck keep their original score. Set it to 1.0
     to disable the discount.
+    `quiz_weight` is zero by default: quiz pages contain questions rather than
+    explanations. Their safe, stripped text stays in the corpus, but cannot
+    displace an answer in keyword retrieval. Set it to 1.0 to restore ranking.
+
+    A question that NAMES a quiz keeps the full score, the same escape hatch
+    `slides_weight` gives an explicit request for a deck. Without it the zero is
+    absolute and "what does the session 8 quiz ask" -- a question a student really
+    types -- gets a refusal, because the only page that could answer it was the one
+    page scored to nothing.
 
     WHY COVERAGE, AND NOT THE SCORE. A score is a sum over the words that
     matched, so it grows with the length of the question: a floor of "4.0"
@@ -216,6 +227,10 @@ def retrieve(
             {"slides", "slide", "deck"} & query_tokens
         ):
             score *= slides_weight
+        if chunk.doc_id.rsplit("/", 1)[-1] == "quiz" and not (
+            {"quiz", "quizzes"} & query_tokens
+        ):
+            score *= quiz_weight
         if score > 0:
             scored.append(ScoredChunk(chunk=chunk, score=round(score, 6)))
 
