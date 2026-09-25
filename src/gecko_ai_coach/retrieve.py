@@ -153,6 +153,12 @@ def retrieve(
     explanations. Their safe, stripped text stays in the corpus, but cannot
     displace an answer in keyword retrieval. Set it to 1.0 to restore ranking.
 
+    A question that NAMES a quiz keeps the full score, the same escape hatch
+    `slides_weight` gives an explicit request for a deck. Without it the zero is
+    absolute and "what does the session 8 quiz ask" -- a question a student really
+    types -- gets a refusal, because the only page that could answer it was the one
+    page scored to nothing.
+
     WHY COVERAGE, AND NOT THE SCORE. A score is a sum over the words that
     matched, so it grows with the length of the question: a floor of "4.0"
     refuses a two-word question and waves a six-word one through. The share of
@@ -221,7 +227,9 @@ def retrieve(
             {"slides", "slide", "deck"} & query_tokens
         ):
             score *= slides_weight
-        if chunk.doc_id.rsplit("/", 1)[-1] == "quiz":
+        if chunk.doc_id.rsplit("/", 1)[-1] == "quiz" and not (
+            {"quiz", "quizzes"} & query_tokens
+        ):
             score *= quiz_weight
         if score > 0:
             scored.append(ScoredChunk(chunk=chunk, score=round(score, 6)))
