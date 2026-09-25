@@ -90,6 +90,51 @@ def send(chat_id: int | str, text: str, **extra) -> None:
         call("sendMessage", chat_id=chat_id, text=part, **extra)
 
 
+#: Where a question the course could not answer is reported. A chat id, not a
+#: secret, and the whole storage design: Telegram already holds the message, so
+#: forwarding one line to a chat the operator owns adds no database, no new
+#: credential and no second copy anywhere we run. Unset means the feature is off.
+OPS_CHAT_ENV = "COACH_OPS_CHAT_ID"
+
+#: Enough of the question to recognise it, and not enough to be a transcript.
+MAX_REPORTED = 300
+
+
+def report_refusal(answer: dict, question: str, state: dict) -> bool:
+    """Forward a question the course did not cover. Returns whether it sent.
+
+    ONLY ``not_covered``. A ``too_short`` refusal is a typo and a ``guard``
+    refusal is somebody prompting the model; neither is the course failing
+    anybody, and a feed that includes them is a feed nobody reads.
+
+    NEVER RAISES, and that is the design rather than politeness. This runs after
+    the student's reply has already gone out, so a broken ops chat, a revoked
+    token or a network blip must cost a log line and not an answer. A telemetry
+    path that can break the product it measures is worse than no telemetry.
+
+    The chat's own call count travels with it because "how many people are
+    actually using this" is the other half of the question, and `calls` is
+    already in the budget state. No identity, no chat id, no name: the point is
+    what the course cannot answer, never who asked it.
+    """
+    if answer.get("refusal_kind") != "not_covered":
+        return False
+    ops = os.environ.get(OPS_CHAT_ENV, "").strip()
+    if not ops:
+        return False
+    asked = " ".join(question.split())[:MAX_REPORTED]
+    try:
+        call(
+            "sendMessage",
+            chat_id=ops,
+            text=f"NOT COVERED (q{int(state.get('calls', 0))} this hour)\n\n{asked}",
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001 - see the docstring: never break a reply
+        print(f"  [ops] could not report a refusal: {type(exc).__name__}: {exc}")
+        return False
+
+
 def handle_update(update: dict, documents: list[Document], chats: dict) -> str | None:
     """Answer one update. Returns the stop reason, or None when there is nothing to answer.
 
@@ -105,6 +150,7 @@ def handle_update(update: dict, documents: list[Document], chats: dict) -> str |
     state = chats.setdefault(chat_id, {})
     answer = reply_to(text, state, documents)
     send(chat_id, answer["reply"])
+    report_refusal(answer, text, state)
     return str(answer["stopped_because"])
 
 

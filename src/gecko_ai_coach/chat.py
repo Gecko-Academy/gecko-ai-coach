@@ -140,6 +140,16 @@ def _normalise(text: str) -> str:
 def reply_to(text: str, state: dict, documents: list[Document], now: float | None = None) -> dict:
     """One message in, one reply out, and the reason it ended that way.
 
+    A refusal also carries ``refusal_kind``, because the three are not the same
+    thing and only one of them is worth a human's attention. ``too_short`` is a
+    typo. ``guard`` is somebody trying to talk to the model instead of the course.
+    ``not_covered`` is the course failing to answer a real question, which is the
+    only one that should ever reach anybody.
+
+    Added as a NEW key rather than by splitting ``stopped_because``: two tests pin
+    that value for two different refusals, and a caller that only wants to know
+    whether it refused should not have to learn three names.
+
     `state` is this chat's own dict and is modified in place: the count, the
     window it belongs to, and the last question asked. A caller that keeps one
     dict per chat gets a budget and a repeat guard for free.
@@ -153,6 +163,7 @@ def reply_to(text: str, state: dict, documents: list[Document], now: float | Non
     if len(message.split()) < 2:
         return {
             "stopped_because": "refused",
+            "refusal_kind": "too_short",
             "reply": "Ask me a question about the course — a few words, the way you would say it.",
             "pages": [],
         }
@@ -162,6 +173,7 @@ def reply_to(text: str, state: dict, documents: list[Document], now: float | Non
         # guard is not announced.
         return {
             "stopped_because": "refused",
+            "refusal_kind": "guard",
             "reply": "I only answer questions about the Dev3Pack course pages.",
             "pages": [],
         }
@@ -195,6 +207,7 @@ def reply_to(text: str, state: dict, documents: list[Document], now: float | Non
     if found.refused or not found.passages:
         return {
             "stopped_because": "refused",
+            "refusal_kind": "not_covered",
             "reply": (
                 "NOT IN THESE PAGES.\n\nNothing in the course covers that. If a week has not "
                 "opened yet, its pages are not here either."
